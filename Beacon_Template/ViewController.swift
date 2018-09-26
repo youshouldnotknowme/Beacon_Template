@@ -8,17 +8,27 @@
 
 import UIKit
 import CoreLocation //importing the framework for Bluetooth access
+import CoreBluetooth //import so we can work the Bluetooth radio
 
-class ViewController: UIViewController, CLLocationManagerDelegate //need to declare this delegate
+class ViewController: UIViewController, CLLocationManagerDelegate, CBPeripheralManagerDelegate //need to declare these delegates, one for location management, the other to work with the bluetooth radio
 {
+    
+    //Beacon creation comes from https://developer.apple.com/documentation/corelocation/turning_an_ios_device_into_an_ibeacon
 
-    //Mark - Properties
+    //MARK: - Properties
     
     //The Location Manager is used to interface with the Bluetooth data
     var locationManager: CLLocationManager!
     
+    //variables for creating a beacon
+    var beacon: CLBeaconRegion!
+    var beaconData: NSDictionary!
+    var beaconPeripheralManager: CBPeripheralManager!
     
-    //Mark - View Management
+    //MARK: - UI
+    var beaconDataLabel: UILabel!
+    
+    //MARK: - View Management
     
     override func viewDidLoad()
     {
@@ -27,15 +37,31 @@ class ViewController: UIViewController, CLLocationManagerDelegate //need to decl
         //we initialize the location manager
         //the delegate is the self (ah, programming)
         //we need the user authorization
-        
         locationManager = CLLocationManager()
         locationManager.delegate = self
         locationManager.requestAlwaysAuthorization()
         
+        
+        //UI Stuff
+        //A switch to toggle the Beacon Broadcasting on/off
+        let beaconSwitch = UISwitch(frame: CGRect(x: self.view.frame.midX - 25, y: self.view.frame.midY - 50, width: 50, height: 50))
+        beaconSwitch.addTarget(self, action: #selector(ViewController.switchStateDidChange(_:)), for: .valueChanged)
+        beaconSwitch.setOn(false, animated: false) //the beacon starts being turned off
+        self.view.addSubview(beaconSwitch)
+        
+        //A label to show stuff
+        beaconDataLabel = UILabel(frame: CGRect(x: self.view.frame.midX - 50, y: self.view.frame.midY - 250, width: 200, height: 50))
+        beaconDataLabel.font = UIFont.preferredFont(forTextStyle: .body)
+        beaconDataLabel.textColor = .black
+        beaconDataLabel.center = CGPoint(x: self.view.frame.midX - 25, y: self.view.frame.midY - 50)
+        beaconDataLabel.textAlignment = .center
+        beaconDataLabel.text = ""
+        beaconDataLabel.isHidden = true
+        self.view.addSubview(beaconDataLabel)
+        
     }
     
-    
-    //Mark - Location Manager
+    //MARK: - Location Manager
     func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus)
     {
         //adapted from the hacking with swift tutorial
@@ -79,12 +105,12 @@ class ViewController: UIViewController, CLLocationManagerDelegate //need to decl
     }
     
     
-    //Mark - Beacon Scanning
+    //MARK: - Beacon Scanning
     func scanForBeacons()
     {
         //we declare the UUID to look for
         //this is the beacon UUID
-        let uuid = UUID(uuidString:"92AB49BE-4127-42F4-B532-90fAF1E26491")! //values here are taken from my Locate iOS app
+        let uuid = UUID(uuidString:"E2C56DB5-DFFB-48D2-B060-D0F5A71096E0")! //this uuid is the Apper AirLocate from the Locate Beacon iOS App
         let beaconRegion = CLBeaconRegion(proximityUUID: uuid, major: 123, minor: 456, identifier: "MyBeacon") //values here are taken from my Locate iOS app
         
         //looking for beacons
@@ -95,7 +121,7 @@ class ViewController: UIViewController, CLLocationManagerDelegate //need to decl
     }
     
     
-    //Mark - Update Loop
+    //MARK: - Update Loop
     
     //A loop that "pings" for proximity
     //I would make the calls to very simple game logic here
@@ -117,6 +143,80 @@ class ViewController: UIViewController, CLLocationManagerDelegate //need to decl
         }
     }
     
+    //MARK: - Beacon initialization
+    func initLocalBeacon()
+    {
+        print("initializad")
+
+        //if there's a beacon already running, we stop it
+        if beacon != nil
+        {
+            stopBeacon()
+        }
+        
+        //variables that define the beacon
+        let beaconUUID = "92AB49BE-4127-42F4-B532-90fAF1E26491" //This UUID is the TwoCanoes beacon from the Locate Beacon iOS App
+        let beaconMajor: CLBeaconMajorValue = 123
+        let beaconMinor: CLBeaconMinorValue = 456
+        
+        let uuid = UUID(uuidString: beaconUUID)
+        
+        //the beacon is created
+        beacon = CLBeaconRegion(proximityUUID: uuid!, major: beaconMajor, minor: beaconMinor, identifier: "Phone Beacon")
+        
+        //To be honest, I am not sure why these need to be here,
+        //but other people have written it on their beacon projects
+        //so I totally trust GitHUb.
+        //There is probably a proper reason for this, who cares, it works.
+        beaconData = beacon.peripheralData(withMeasuredPower: nil)
+        beaconPeripheralManager = CBPeripheralManager(delegate: self, queue: nil, options: nil)
+        
+        beaconDataLabel.text = "Beacon Transmitting"
+        beaconDataLabel.sizeToFit()
+        beaconDataLabel.isHidden = false
+    }
+    
+    
+    //MARK: - Beacon management
+    func stopBeacon()
+    {
+        if beaconPeripheralManager != nil
+        {
+            beaconPeripheralManager.stopAdvertising()
+            beaconPeripheralManager = nil
+            beaconData = nil
+            beacon = nil
+            
+            beaconDataLabel.isHidden = true
+        }
+    }
+    
+    //MARK: - Beacon On/Off Toggle
+    @objc func switchStateDidChange(_ sender:UISwitch){
+        if (sender.isOn == true)
+        {
+            print("UISwitch state is now ON")
+            initLocalBeacon()
+        }
+        else
+        {
+            print("UISwitch state is now Off")
+            stopBeacon()
+        }
+    }
+    
+    //MARK: - Complying with CBPeripheralManagerDelegate
+    func peripheralManagerDidUpdateState(_ peripheral: CBPeripheralManager)
+    {
+        if peripheral.state == .poweredOn
+        {
+            beaconPeripheralManager.startAdvertising(beaconData as! [String: AnyObject]!)
+        }
+        else if peripheral.state == .poweredOff
+        {
+            beaconPeripheralManager.stopAdvertising()
+        }
+    }
     
     
     override func didReceiveMemoryWarning() {
