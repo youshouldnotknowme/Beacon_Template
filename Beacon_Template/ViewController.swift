@@ -27,6 +27,7 @@ class ViewController: UIViewController, CLLocationManagerDelegate, CBPeripheralM
     
     //MARK: - UI
     var beaconDataLabel: UILabel!
+    var beaconProximityLabel: UILabel!
     
     //MARK: - View Management
     
@@ -49,16 +50,25 @@ class ViewController: UIViewController, CLLocationManagerDelegate, CBPeripheralM
         beaconSwitch.setOn(false, animated: false) //the beacon starts being turned off
         self.view.addSubview(beaconSwitch)
         
-        //A label to show stuff
-        beaconDataLabel = UILabel(frame: CGRect(x: self.view.frame.midX - 50, y: self.view.frame.midY - 250, width: 200, height: 50))
+        //A label to show if the beacon is transmitting
+        beaconDataLabel = UILabel(frame: CGRect(x: self.view.frame.midX, y: self.view.frame.midY - 50, width: 200, height: 50))
         beaconDataLabel.font = UIFont.preferredFont(forTextStyle: .body)
         beaconDataLabel.textColor = .black
-        beaconDataLabel.center = CGPoint(x: self.view.frame.midX - 25, y: self.view.frame.midY - 50)
+        beaconDataLabel.center = CGPoint(x: self.view.frame.midX + 25, y: self.view.frame.midY - 50)
         beaconDataLabel.textAlignment = .center
         beaconDataLabel.text = ""
         beaconDataLabel.isHidden = true
         self.view.addSubview(beaconDataLabel)
         
+        //A label to know if a beacon is close by
+        beaconProximityLabel = UILabel(frame: CGRect(x: self.view.frame.midX - 50, y: self.view.frame.midY - 50, width: 200, height: 50))
+        beaconProximityLabel.font = UIFont.preferredFont(forTextStyle: .body)
+        beaconProximityLabel.textColor = .black
+        beaconProximityLabel.center = CGPoint(x: self.view.frame.midX, y: self.view.frame.midY)
+        beaconProximityLabel.textAlignment = .center
+        beaconProximityLabel.text = ""
+        beaconProximityLabel.isHidden = true
+        self.view.addSubview(beaconProximityLabel)
     }
     
     //MARK: - Location Manager
@@ -68,7 +78,7 @@ class ViewController: UIViewController, CLLocationManagerDelegate, CBPeripheralM
         //if we are allowed to use location
         //SUPER IMPORTANT: IF IN MACOS, ADD THE FOLLOWING TO YOUR .PLIST
         //privacy location always usage description
-        //or
+        //and
         //privacy location when in use description
         if status == .authorizedAlways
         {
@@ -110,8 +120,8 @@ class ViewController: UIViewController, CLLocationManagerDelegate, CBPeripheralM
     {
         //we declare the UUID to look for
         //this is the beacon UUID
-        let uuid = UUID(uuidString:"E2C56DB5-DFFB-48D2-B060-D0F5A71096E0")! //this uuid is the Apper AirLocate from the Locate Beacon iOS App
-        let beaconRegion = CLBeaconRegion(proximityUUID: uuid, major: 123, minor: 456, identifier: "MyBeacon") //values here are taken from my Locate iOS app
+        let uuid = UUID(uuidString:"B0702880-A295-A8AB-F734-031A98A512DE")! //INSERT HERE THE UUID OF YOUR BEACON
+        let beaconRegion = CLBeaconRegion(proximityUUID: uuid, major: 2, minor: 1000, identifier: "MyBeacon") //values here are taken from my Locate iOS app
         
         //looking for beacons
         locationManager.startMonitoring(for: beaconRegion)
@@ -134,10 +144,16 @@ class ViewController: UIViewController, CLLocationManagerDelegate, CBPeripheralM
             print("Unknown Distance")
         case .far:
             print("Far Distance")
+            beaconProximityLabel.isHidden = false
+            beaconProximityLabel.text = "Far"
         case .near:
             print("Near Distance")
+            beaconProximityLabel.isHidden = false
+            beaconProximityLabel.text = "Near"
         case .immediate:
             print("Immediate Distance")
+            beaconProximityLabel.isHidden = false
+            beaconProximityLabel.text = "Immediate"
         default:
             break
         }
@@ -155,7 +171,8 @@ class ViewController: UIViewController, CLLocationManagerDelegate, CBPeripheralM
         }
         
         //variables that define the beacon
-        let beaconUUID = "92AB49BE-4127-42F4-B532-90fAF1E26491" //This UUID is the TwoCanoes beacon from the Locate Beacon iOS App
+        //let beaconUUID = "92AB49BE-4127-42F4-B532-90fAF1E26491"
+        let beaconUUID = "3BD7B272-F370-4AF6-AA3F-D762843C13B1"// THESE ARE BROADCASTING UUID
         let beaconMajor: CLBeaconMajorValue = 123
         let beaconMinor: CLBeaconMinorValue = 456
         
